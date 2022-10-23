@@ -1,5 +1,5 @@
 ---
-title: "midterm_Xuan_Huang"
+title: "Association Between Age Groups and COVID-19 Death"
 author: "Xuan Huang"
 date: "2022-10-22"
 output: 
