@@ -1,0 +1,236 @@
+---
+title: "midterm_Xuan_Huang"
+author: "Xuan Huang"
+date: "2022-10-22"
+output: 
+    html_document:
+      toc: yes 
+      toc_float: yes
+      keep_md : yes 
+    github_document:
+      html_preview: false
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+## Background on the dataset
+
+Older people have higher rates of comorbidities and may experience more inflammatory responses. Therefore, when older people had COVID-19, the COVID-19 deaths proportion of total deaths for elderly will be higher than the younger. Herein, we aimed to explore the association between age and 
+the deaths involving coronavirus disease 2019(COVID-19).
+
+The raw dataset we used is from nation center for health statistics. Each row of 
+dataset is COVID-19 deaths by sex, age, state, year and month. 
+We will include sex and state variables in our dataset, because the COVID-19
+death may be sex-specific, and the vaccine received situation may vary from different
+states. Including sex and state variables can help us stratify the COVID-19 death proportion in 
+different age groups. So variables to be used are date of data period, sex, 
+state, age group, COVID-19 death, total death. 
+
+
+
+## Formulated question
+**What is the association of age groups with COVID-19 death proportion of total death?**
+
+
+# Method
+
+## Where the data acquired
+**Provisional COVID-19 Deaths by Sex and Age**
+
+- download link: https://data.cdc.gov/api/views/9bhg-hcku/rows.csv?accessType=DOWNLOAD
+
+### needed package
+```{r package, include=FALSE}
+library(dplyr)
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+```
+
+### read data
+```{r read_dataset, cache=TRUE}
+dat1 <- "death_by_sex_age.csv"
+if (!file.exists(dat1))
+  download.file("https://data.cdc.gov/api/views/9bhg-hcku/rows.csv?accessType=DOWNLOAD", destfile = dat1)
+
+death_by_sex_age <- data.table::fread("death_by_sex_age.csv")
+# summary(death_by_sex_age)
+```
+## clean raw dataset
+
+**Raw dataset contains the COVID-19 deaths data in different period from 01/01/2020 to 10/15/2022. Here, we used the data from 01/01/2020 to 10/15/2022. This period contains the most deaths data.**
+
+```{r}
+dat1 <- death_by_sex_age[`Start Date` == "01/01/2020" & `End Date` == "10/15/2022"]
+# str(dat1)
+```
+**In the following process, we will stratify the COVID-19 deaths rates by sex and state. But sex variable includes the value of "all Sexes". State variable includes the value of "United States". Age Group includes the value of "All Ages". We need to delete those useless value.**
+
+```{r}
+dat1 <- dat1[Sex != "All Sexes" & `Age Group` != "All Ages" & State != "United States"]
+#unique(dat1$`Age Group`)
+```
+
+**When we check the value of Age group variable, we find some of age groups are overlapped. So we need to remove some of age group**
+
+```{r}
+dat1 <- dat1[`Age Group` != "0-17 years" & `Age Group` != "18-29 years" & `Age Group` !="30-39 years" & `Age Group` != "40-49 years" & `Age Group` != "50-64 years"]
+```
+
+**Age group is a ordinal categorical variable. The different age group have a clear order. So we use "order" function to tranform age group variable to ordered factor.**
+```{r}
+dat1 <- dat1[, `Age Group` := ordered(`Age Group`, levels = c(
+    "Under 1 year","1-4 years"  ,    "5-14 years",     
+ "15-24 years"  ,    "25-34 years"   ,    "35-44 years"    ,  
+ "45-54 years"  ,    "55-64 years"    ,   "65-74 years"    ,  
+"75-84 years"   ,    "85 years and over"
+))]
+```
+
+
+**We also need to calculate the COVID-19 deaths proportion of total death.**
+```{r}
+dat1[, "COVID-19 deaths proportion" := `COVID-19 Deaths`/`Total Deaths`]
+summary(dat1$`COVID-19 deaths proportion`)
+```
+
+**Checking the distribution of the proportion of COVID-19 death, the proportion ranges from 0 to 0.2347. There is no abnormal value in the proportion of COVID-19 death.**
+
+**I used 'summary' to check the distribution of continous variables, like "COVID-19 deaths proportion". Using 'unique' to check value of target categorical variable.**
+
+### Exploratory Data Analysis
+
+**First, Check the dimensions and headers and footers of the data**
+```{r}
+dim(dat1)
+#head(dat1)
+#tail(dat1)
+```
+
+**Check the variable types in the data**
+
+```{r}
+# str(dat1)
+```
+
+**Take a closer look at some/all of the variables**
+
+```{r}
+summary(dat1$`COVID-19 deaths proportion`)
+#unique(dat1$`Age Group`)
+#unique(dat1$Sex)
+#unique(dat1$State)
+```
+
+**Using "summary" to check the distribution of of the proportion of COVID-19 death, the proportion ranges from 0 to 0.2347. There is no abnormal value in the proportion of COVID-19 death. The most of proportion of COVID-19 death fall into the range of 0.0465 to 0.1152. After cleanning the data, sex, age group and state variables look good.**
+
+### Conduct some summary statistics to answer the initial question
+
+**Calculate means of COVID-19 death proportion in different age groups**
+```{r}
+dat2 <- death_by_sex_age[`Start Date` == "01/01/2020" & `End Date` == "10/15/2022" & State == "United States" & Sex == "All Sexes" & `Age Group` != "All Ages"]
+dat2[, "COVID-19 Death Proportion" := `COVID-19 Deaths`/`Total Deaths`]
+
+dat2 <- dat2[`Age Group` != "0-17 years" & `Age Group` != "18-29 years" & `Age Group` !="30-39 years" & `Age Group` != "40-49 years" & `Age Group` != "50-64 years"]
+
+dat2 <- dat2[, `Age Group` := ordered(`Age Group`, levels = c(
+    "Under 1 year","1-4 years"  ,    "5-14 years",     
+ "15-24 years"  ,    "25-34 years"   ,    "35-44 years"    ,  
+ "45-54 years"  ,    "55-64 years"    ,   "65-74 years"    ,  
+"75-84 years"   ,    "85 years and over"
+))]
+
+dat2[, .(`Age Group`, `COVID-19 Death Proportion`)]
+```
+
+**From the above list of COVID-19 Death Proportion, with increase of age, the proportion of COVID-19 death increased. However, when age beyond 74 years, the proportion of COVID-19 death decreased. **
+
+# Preliminary Results
+
+画个总人口 的，age和cov的图，用柱状图
+画一个sex specific 的boxplot， 比较两个的中位数
+画sex specific 的barchart
+比较所有州的boxplot
+画state specific 的barchart
+
+## Summary Statistics Table
+
+```{r}
+overall_age_cov <- dat2[, .(`Age Group`, `COVID-19 Death Proportion`)]
+knitr::kable(overall_age_cov, caption = "Table 1  COVID-19 Death Proportion in different Age Group")
+```
+
+**From the table of COVID-19 Death Proportion, with increase of age, the proportion of COVID-19 death increased. However, when age beyond 74 years, the proportion of COVID-19 death decreased. **
+
+```{r}
+dat3 <- death_by_sex_age[`Start Date` == "01/01/2020" & `End Date` == "10/15/2022" & State == "United States" & Sex != "All Sexes" & `Age Group` != "All Ages" & `Age Group` != "0-17 years" & `Age Group` != "18-29 years" & `Age Group` !="30-39 years" & `Age Group` != "40-49 years" & `Age Group` != "50-64 years"]
+dat3[, "COVID-19 Death Proportion" := `COVID-19 Deaths`/`Total Deaths`]
+
+sex_age_cov <- dat3[, .(`Age Group`, `COVID-19 Death Proportion`), by = Sex]
+knitr::kable(sex_age_cov, caption = "Table 2  COVID-19 Death Proportion in different Age Group stratifed by Sex")
+```
+
+**From the sex specific table of COVID-19 Death Proportion in different Age Group, there is a difference of COVID-19 Death Proportion between male and female.**
+
+```{r}
+dat4 <- death_by_sex_age[`Start Date` == "01/01/2020" & `End Date` == "10/15/2022" & State != "United States" & Sex == "All Sexes" & `Age Group` == "All Ages"]
+dat4[, "COVID-19 Death Proportion" := `COVID-19 Deaths`/`Total Deaths`]
+state_cov <- dat4[, .(`State`, `COVID-19 Death Proportion`)]
+knitr::kable(state_cov, caption = "Table 3 Average COVID-19 Death Proportion in different states")
+```
+
+**From the average COVID-19 Death Proportion in different states, we can find that there is a difference of average COVID-19 Death Proportion between different states, which caused by the medical condition and vaccine popularity.**
+
+## Exploratory Figures
+
+**First, we do scatter plot of age group and COVID-19 deaths proportion. **
+```{r}
+dat1 %>%
+  ggplot() +
+  geom_point(mapping = aes(y = `COVID-19 deaths proportion`, x = `Age Group`, color = Sex), position = "jitter") + 
+  theme(axis.text.x = element_text(angle = 45)) + 
+  labs(title = "Association between Age Groups and COVID-19 Death Proportion", y = "Proportion of COVID-19 Death", x = "Age Groups")
+
+```
+
+**As shown in graph, The proportion of COVID-19 deaths increase within the higher age group. However, for female whose age beyond 75 years, their proportion of COVID-19 deaths decrease a little. Because gender may affect the association between COVID-19 deaths proportion and age group, we will stratify the association between COVID-19 deaths proportion and age group by gender.**
+
+**We generate two spaghetti plots of proportion of COVID-19 deaths versus age groups in different state group. Because the medical condition and vaccine popularity vary from states, we concentrate on the relationship between proportion of COVID-19 deaths and age group in different states.**
+```{r fig.height=8, fig.width= 10}
+
+dat1[Sex == "Male"] %>%
+  ggplot(mapping = aes(y = `COVID-19 deaths proportion`, x = `Age Group`, group = State, color = State)) +
+  #geom_point(mapping = aes(y = `COVID-19 deaths proportion`, x = `Age Group`), position = "jitter") + 
+  geom_line(size = 1) +
+  theme(axis.text.x = element_text(angle = 45)) + 
+  labs(title = "For Male, Association between Age Groups and COVID-19 Death Proportion vary by State", y = "Proportion of COVID-19 Death", x = "Age Groups") +
+  theme(legend.position = "bottom")
+```
+```{r fig.height=8, fig.width= 10}
+
+dat1[Sex == "Female"] %>%
+  ggplot(mapping = aes(y = `COVID-19 deaths proportion`, x = `Age Group`, group = State, color = State)) +
+  #geom_point(mapping = aes(y = `COVID-19 deaths proportion`, x = `Age Group`), position = "jitter") + 
+  geom_line(size = 1) +
+  theme(axis.text.x = element_text(angle = 45)) + 
+  labs(title = "For Female, Association between Age Groups and COVID-19 Death Proportion vary by State", y = "Proportion of COVID-19 Death", x = "Age Groups") +
+  theme(legend.position = "bottom")
+```
+
+**From these two spaghetti plots of proportion of COVID-19 deaths versus age groups, we find the increase rate of proportion of COVID-19 deaths for male is fast from 15 years old to 54 years old. When age beyond 55 years, the increase rate of proportion of COVID-19 deaths get slow. For female, there is no obvious break point of the increase rate of proportion of COVID-19 deaths. At about 55 years old, the change of COVID-19 deaths proportion converted from increase to decrease. **
+
+# Conclusion
+
+**There is a association between patients' age groups and the proportion of COVID-19 deaths. With the increase of patients' age, the proportion of COVID-19 deaths get higher. However, this relationship was sex-specific. The increase rate of COVID-19 deaths proportion for male is fast from 15 years old to 54 years old. When age beyond 55 years, the increase rate of COVID-19 deaths proportion get slow. For female, there is no obvious break point of the increase rate. Around 55 years old, the change of COVID-19 deaths proportion converted from increase to decrease.**
+
+
+
+
+
+
+
